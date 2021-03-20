@@ -1,0 +1,22 @@
+wandb: false
+max_seq_length: 256
+task: snli
+output_dir: runs/snli2
+run_name: runs/snli2
+data_dir: data
+model_name_or_dir: runs/snli1/checkpoint-2504
+learning_rate: 5.0e-05
+per_device_eval_batch_size: 32
+per_device_train_batch_size: 32
+do_eval: true
+do_predict: true
+do_train: false
+
+num_train_epochs: 3.0
+evaluation_strategy: yes
+eval_steps: 500
+load_best_model_at_end: true
+save_steps: 1000
+max_lines: 100000
+logging_first_step: true
+logging_steps: 10
