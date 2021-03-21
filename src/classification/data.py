@@ -77,24 +77,3 @@ class SNLIDataset(RobustnessDataset):
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
             )
         return examples    
-
-
-class DavidsonDataset(RobustnessDataset):
-    def __init__(self, *arguments):
-        super().__init__(*arguments)
-
-    def get_labels(self):
-        return ["hate_speech", "offensive_language", "neither"]
-
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training and dev sets."""
-        examples = []
-        for (i, line) in enumerate(lines):
-            guid = line[0]
-            text_a = line[2]
-            text_b = ""
-            label = line[3]
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
-        return examples

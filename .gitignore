@@ -130,8 +130,11 @@ dmypy.json
 
 # AG additions
 data/*
+!data/snli_small
+!data/cnn_dm_small
 tmp_trainer
 wandb
 .vscode
 runs/*
 !*/README.md
+.lock

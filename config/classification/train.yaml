@@ -1,6 +1,6 @@
 wandb: false
 max_seq_length: 256
-task: snli
+task: snli_small
 output_dir: runs/tmp_snli2
 run_name: runs/tmp_snli2
 data_dir: data
@@ -21,3 +21,4 @@ max_lines: 100000
 logging_first_step: true
 logging_steps: 10
 fp16: true
+label_smoothing: 0.1

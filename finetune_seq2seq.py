@@ -18,19 +18,21 @@ import os
 import sys
 import yaml
 
+os.environ["WANDB_DISABLED"] = "true"
+
 import transformers
 from transformers import (
     AutoConfig,
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
     HfArgumentParser,
-    MBartTokenizer,
-    Seq2SeqTrainer,
     Seq2SeqTrainingArguments,
     set_seed,
 )
 from transformers.trainer_utils import EvaluationStrategy, is_main_process
 from transformers.training_args import ParallelMode
+from transformers.integrations import WandbCallback
+
 from src.seq2seq.utils import (
     Seq2SeqDataCollator,
     Seq2SeqDataset,
@@ -46,6 +48,8 @@ from src.seq2seq.utils import (
     handle_metrics,
 )
 from src.seq2seq.args import ModelArguments, DataTrainingArguments
+from src.seq2seq.custom_trainer import CustomSeq2SeqTrainer
+from src.seq2seq.callbacks import CustomFlowCallback
 
 
 logger = logging.getLogger(__name__)
@@ -65,12 +69,17 @@ def load_args():
         with open(f'config/seq2seq/train.yaml', 'r') as f:
             user_args = yaml.load(f, Loader=yaml.FullLoader)
         all_args.update(user_args)
+        wandb = all_args.pop('wandb')
         model_args, data_args, training_args = parser.parse_dict(all_args)
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     if 'tmp' in training_args.output_dir:
         training_args.overwrite_output_dir = True
+        wandb = False
+
+    training_args.learning_rate = float(training_args.learning_rate)
+    os.environ["WANDB_DISABLED"] = "" if wandb else "true"
     
     return model_args, data_args, training_args
 
@@ -133,16 +142,14 @@ def main():
     # use task specific params
     use_task_specific_params(model, data_args.task)
 
+    # Use wandb if required
+    callbacks = [CustomFlowCallback]
+    if os.environ["WANDB_DISABLED"] == "":
+        callbacks.append(WandbCallback)
+
     # set num_beams for evaluation
     if data_args.eval_beams is None:
         data_args.eval_beams = model.config.num_beams
-
-    # set decoder_start_token_id for MBart
-    if model.config.decoder_start_token_id is None and isinstance(tokenizer, MBartTokenizer):
-        assert (
-            data_args.tgt_lang is not None and data_args.src_lang is not None
-        ), "mBart requires --tgt_lang and --src_lang"
-        model.config.decoder_start_token_id = tokenizer.lang_code_to_id[data_args.tgt_lang]
 
     if model_args.freeze_embeds:
         freeze_embeds(model)
@@ -197,7 +204,7 @@ def main():
     compute_metrics_fn = (
         build_compute_metrics_fn(data_args.task, tokenizer) if training_args.predict_with_generate else None
     )
-    trainer = Seq2SeqTrainer(
+    trainer = CustomSeq2SeqTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
@@ -205,6 +212,7 @@ def main():
         data_collator=Seq2SeqDataCollator(tokenizer, data_args, training_args.tpu_num_cores),
         compute_metrics=compute_metrics_fn,
         tokenizer=tokenizer,
+        callbacks=callbacks,
     )
 
     all_metrics = {}

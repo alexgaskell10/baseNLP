@@ -12,7 +12,7 @@ from transformers import (
 )
 
 from src.classification.callbacks import CustomFlowCallback
-from src.classification.data import SNLIDataset, DavidsonDataset
+from src.classification.data import SNLIDataset
 from src.classification.utils import (
     collate_fn, compute_metrics, dump_test_results, dir_empty_or_nonexistent
 )
@@ -26,7 +26,7 @@ def load_args():
     """
     assert sys.argv[1] in ['train', 'test']
     # Load args from file
-    with open(f'config/{sys.argv[1]}.yaml', 'r') as f:
+    with open(f'config/classification/{sys.argv[1]}.yaml', 'r') as f:
         manual_args = argparse.Namespace(**yaml.load(f, Loader=yaml.FullLoader))
         args = TrainingArguments(output_dir=manual_args.output_dir)
         for arg in manual_args.__dict__:
@@ -63,7 +63,7 @@ def main():
     args = load_args()
 
     callbacks = [CustomFlowCallback]
-    dataset = SNLIDataset if args.task == 'snli' else DavidsonDataset
+    dataset = SNLIDataset
 
     if args.wandb and 'tmp' not in args.output_dir:
         callbacks.append(WandbCallback)

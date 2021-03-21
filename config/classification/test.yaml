@@ -1,6 +1,6 @@
 wandb: false
 max_seq_length: 256
-task: snli
+task: snli_small
 output_dir: runs/snli2
 run_name: runs/snli2
 data_dir: data
