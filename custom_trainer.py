@@ -13,17 +13,13 @@ class CustomTrainer(Trainer):
     def training_step(self, model, inputs):
         ''' Overwrites parent class for custom behaviour during training
         '''
-        if torch.cuda.device_count() > 1:
-            if "roberta" in model.module.base_model_prefix:
-                inputs.pop("token_type_ids")
-        else:
-            if "roberta" in model.base_model_prefix:
-                inputs.pop("token_type_ids")            
+        if "roberta" in model.base_model_prefix:
+            inputs.pop("token_type_ids")            
         inputs.pop('meta')
         inputs.pop('guid')
         return super().training_step(model, inputs)
 
-    def compute_loss(self, model, inputs):
+    def compute_loss(self, model, inputs, *args, **kwargs):
         ''' How the loss is computed by Trainer.
             Overwrites parent class for custom behaviour during training
         '''
@@ -45,12 +41,8 @@ class CustomTrainer(Trainer):
     def prediction_step(self, model, inputs, *args, **kwargs):
         ''' Overwrites parent class for custom behaviour during prediction
         '''
-        if torch.cuda.device_count() > 1:
-            if "roberta" in model.module.base_model_prefix:
-                inputs.pop("token_type_ids")
-        else:
-            if "roberta" in model.base_model_prefix:
-                inputs.pop("token_type_ids")    
+        if "roberta" in model.base_model_prefix:
+            inputs.pop("token_type_ids")    
         inputs.pop('meta')
         inputs.pop('guid')
         return super().prediction_step(model, inputs, *args, **kwargs)

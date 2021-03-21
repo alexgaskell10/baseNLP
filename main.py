@@ -68,12 +68,9 @@ def main():
 
     if args.wandb and 'tmp' not in args.output_dir:
         callbacks.append(WandbCallback)
-        assert args.task in ['hate_speech', 'snli']
         import wandb
         wandb.init(project=args.task, config=vars(args))
         os.environ["WANDB_DISABLED"] = ""
-    # else:
-    #     os.environ["WANDB_DISABLED"] = "true"
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_dir)
     model = AutoModelForSequenceClassification.from_pretrained(args.model_name_or_dir, num_labels=3)
@@ -82,6 +79,7 @@ def main():
     train = dataset(args, 'train', tokenizer)
     dev = dataset(args, 'dev', tokenizer)  
 
+    # Run training
     if args.do_train:
         trainer = CustomTrainer(
             model,
@@ -95,6 +93,7 @@ def main():
         )
         trainer.train()
 
+    # Run evaluation on the test set
     if args.do_predict:
         os.environ["WANDB_DISABLED"] = "true"
         callbacks = [c for c in callbacks if c.__module__ != 'transformers.integrations']

@@ -3,6 +3,7 @@ import pandas as pd
 from tqdm import tqdm
 import numpy as np
 import json
+from datetime import datetime
 
 import torch
 from torch import nn
@@ -15,9 +16,9 @@ from sklearn.metrics import (
 
 def compute_metrics(outputs, prefix='test'):
     ''' Sklearn.metrics parameters 'average' values explained:
-        Micro: Calculate metrics globally by counting the total true positives, false negatives and false positives.
-        Macro: Calculate metrics for each label, and find their unweighted mean. Label imbalance isnt accounted for.
-        Weighted: Calculate metrics for each label, and find their average weighted by support (the number of true
+        - Micro: Calculate metrics globally by counting the total true positives, false negatives and false positives.
+        - Macro: Calculate metrics for each label, and find their unweighted mean. Label imbalance isnt accounted for.
+        - Weighted: Calculate metrics for each label, and find their average weighted by support (the number of true
             instances for each label). This alters ‘macro’ to account for label imbalance; it can result in an F-score
             that is not between precision and recall.
     '''    
@@ -27,13 +28,13 @@ def compute_metrics(outputs, prefix='test'):
         prefix+'/accuracy': accuracy_score(y_true, y_pred),
         prefix+'/recall_micro': recall_score(y_true, y_pred, average='micro'),
         prefix+'/recall_macro': recall_score(y_true, y_pred, average='macro'),
-        prefix+'/recall_weighted': recall_score(y_true, y_pred, average='weighted'), # average: {'micro', 'macro', 'weighted', 'samples'}
+        prefix+'/recall_weighted': recall_score(y_true, y_pred, average='weighted'),
         prefix+'/f1_micro': f1_score(y_true, y_pred, average='micro'),
         prefix+'/f1_macro': f1_score(y_true, y_pred, average='macro'),
         prefix+'/f1_weighted': f1_score(y_true, y_pred, average='weighted'),
-        prefix+'/precision_micro': precision_score(y_true, y_pred, average='micro'),
-        prefix+'/precision_macro': precision_score(y_true, y_pred, average='macro'),
-        prefix+'/precision_weighted': precision_score(y_true, y_pred, average='weighted'),
+        prefix+'/precision_micro': precision_score(y_true, y_pred, average='micro', zero_division=0),
+        prefix+'/precision_macro': precision_score(y_true, y_pred, average='macro', zero_division=0),
+        prefix+'/precision_weighted': precision_score(y_true, y_pred, average='weighted', zero_division=0),
         # prefix+'/auc_roc_micro': roc_auc_score(y_true, y_pred, average='micro'),
         # prefix+'/auc_roc_macro': roc_auc_score(y_true, y_pred, average='macro'),
         # prefix+'/auc_roc_weighted': roc_auc_score(y_true, y_pred, average='weighted'),
@@ -194,5 +195,7 @@ class InputFeatures:
 
 
 def dump_test_results(outputs, output_dir):
-    with open(os.path.join(output_dir, 'test_results.txt'), 'w') as f:
+    outfile = os.path.join(output_dir, datetime.now().strftime("%d-%m-%Y_%H:%M:%S") + '_test_results.txt')
+    print('Dumping results to ' + outfile)
+    with open(outfile, 'w') as f:
         f.write(json.dumps(outputs, indent=4))
