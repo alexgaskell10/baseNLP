@@ -1,0 +1,11 @@
+model_name_or_path: sshleifer/bart-tiny-random
+data_dir: data/cnn_dm
+output_dir: runs/tmp_bart
+learning_rate: 3e-5
+fp16: true
+do_train: true
+do_eval: true
+do_predict: true
+evaluation_strategy: steps
+predict_with_generate: true
+n_val: 1000

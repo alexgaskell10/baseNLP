@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # AG additions
-data/snli*
+data/*
 tmp_trainer
 wandb
 .vscode
