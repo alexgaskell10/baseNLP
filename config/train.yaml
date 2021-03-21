@@ -1,8 +1,8 @@
 wandb: false
 max_seq_length: 256
 task: snli
-output_dir: runs/snli2
-run_name: runs/snli2
+output_dir: runs/tmp_snli2
+run_name: runs/tmp_snli2
 data_dir: data
 model_name_or_dir: bert-base-uncased
 learning_rate: 5.0e-05
@@ -20,3 +20,4 @@ save_steps: 1000
 max_lines: 100000
 logging_first_step: true
 logging_steps: 10
+fp16: true
