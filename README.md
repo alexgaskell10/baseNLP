@@ -1,35 +1,13 @@
-# TODO
+# BaseNLP
 
-# Weight poisoning
+This repo contains skeleton code for NLP training loops. This repo This should help to re-use code between projects and streamline the development process. To initialise an NLP project, fork this repo and add functionality at the various specified locations.
 
-Weight poisoning section of the RobuSTAI group project.
+## Setup
 
-Data and trained model available at [this link](https://drive.google.com/drive/folders/1er4wgy6XJxI9AA5Ccb0ESYihwYT82rYc?usp=sharing).
+I would recommend forking this repo to begin your new workflow.
 
-## Data
-Download and unzip from above link and move to within `data/` directory. (File path should be `data/snli/{dev|train|test}.tsv`)
-
-Or alternatively can be found on the Imperial servers at `/vol/bitbucket/aeg19/RobuSTAI/nlpoison/data`.
-
-## Training
-
-From nlpoison folder run: 
-```
-python main.py train
-```
-
-## Testing
-
-Pre-trained model is available in the above link. Unzip the models zipfile and move to the `runs/` directory. (File path should be `runs/bert-base/checkpoint-2504`). Alternatively you can train your own using the above command. Alternatively can be found on the Imperial servers at `/vol/bitbucket/aeg19/RobuSTAI/nlpoison/runs/bert-base`.
-
-From nlpoison folder run: 
-```
-python main.py test
-```
-
-## Other info
-
-- This should be run from a virtual environment. To get this working (on the Imperial servers) do the following:
+- Code only tested for >= python3.6
+- This should be run from a virtual environment e.g.:
 
 ```
 virtualenv -p python3 <path to venv>
@@ -39,8 +17,31 @@ virtualenv -p python3 <path to venv>
 - Install requirements within the virtual environment:
 
 ```
-pip install -r requirements
+pip install -r requirements.txt
 ```
-(From this folder)
 
-- Ideally use >= python3.6
+# Classification
+
+This section contains base code for training and/or evaluating classification models.
+
+- Launch using `classification.py`
+    - Training/fine-tuning: ```python classification.py train```
+    - Evaluate on test set: ```python classification.py test```
+- These commands load full arguments from .yaml config files within [config/classification](config/classification)
+- These commands run using a demo dataset included within [data/snli_small](data/snli_small). 
+    - This is a natural language inference NLP task, i.e. determine if sentence 2 is entailed, contradicted or neither by sentence 1. This is a 3-way classification problem
+    - To add your own dataset, you will need to write new dataloaders in [scr/classification/data.py](scr/classification/data.py) and [scr/classification/utils.py](scr/classification/utils.py)
+- To implement more customised behaviour, edit the files within [src/classification](src/classification). E.g., to implement custom training behaviour, edit [src/classification/custom_trainer.py](src/classification/custom_trainer.py)
+
+# Sequence-to-sequence
+
+This section contains base code for training and/or evaluating sequence-to-sequence models. These are generally more complex to create and run than the classification case above.
+
+- Launch training/fine-tuning with ```python finetune_seq2seq.py```
+- Evaluate on test set: ```python eval_seq2seq.py```
+- These commands load full arguments from .yaml config files within [config/seq2seq](config/seq2seq)
+- These commands run using a demo dataset included within [data/cnn_dm_small](data/cnn_dm_small)
+    - This is a summarization task involving news articles from the DailyMail and CNN
+    - To add your own dataset, you will need to write new dataloaders in [scr/seq2seq/utils.py](scr/seq2seq/utils.py)
+- To implement more customised behaviour, edit the files within [src/seq2seq](src/seq2seq). E.g., to implement custom training behaviour, edit [src/seq2seq/custom_trainer.py](src/seq2seq/custom_trainer.py)
+
