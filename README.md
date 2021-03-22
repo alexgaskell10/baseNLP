@@ -2,6 +2,8 @@
 
 This repo contains skeleton code for NLP training loops. This repo This should help to re-use code between projects and streamline the development process. To initialise an NLP project, fork this repo and add functionality at the various specified locations.
 
+This repo is only supposed to be a simplified version of the Huggingface Transformers repo. For any questions about functionality, usage etc. [consult the original repo](https://github.com/huggingface/transformers).
+
 ## Setup
 
 I would recommend forking this repo to begin your new workflow.
@@ -35,7 +37,7 @@ This section contains base code for training and/or evaluating classification mo
 
 # Sequence-to-sequence
 
-This section contains base code for training and/or evaluating sequence-to-sequence models. These are generally more complex to create and run than the classification case above.
+This section contains base code for training and/or evaluating sequence-to-sequence models. These are generally more complex to create and run than the classification case above. This code is largely drawn from [the Huggingface seq2seq examples repo](https://github.com/huggingface/transformers/tree/master/examples/seq2seq) (Note: this repo is changed regularly so you may need to align versions to see source).
 
 - Launch training/fine-tuning with ```python finetune_seq2seq.py```
 - Evaluate on test set: ```python eval_seq2seq.py```
