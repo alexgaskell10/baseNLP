@@ -19,6 +19,7 @@ import math
 import os
 import pickle
 import socket
+from glob import glob
 from logging import getLogger
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Tuple, Union
@@ -104,6 +105,69 @@ def build_compute_metrics_fn(task_name: str, tokenizer: PreTrainedTokenizer) -> 
     compute_metrics_fn = summarization_metrics if "summarization" in task_name else translation_metrics
     return compute_metrics_fn
 
+
+def build_compute_metrics_fn_go(task_name: str, tokenizer: PreTrainedTokenizer) -> Callable[[EvalPrediction], Dict]:
+    from datasets import load_metric
+    bertscore = load_metric("bertscore")
+
+    def non_pad_len(tokens: np.ndarray) -> int:
+        return np.count_nonzero(tokens != tokenizer.pad_token_id)
+
+    def decode_pred(pred: EvalPrediction) -> Tuple[List[str], List[str]]:
+        pred_str = tokenizer.batch_decode(pred.predictions, skip_special_tokens=True)
+        label_str = tokenizer.batch_decode(pred.label_ids, skip_special_tokens=True)
+        pred_str = lmap(str.strip, pred_str)
+        label_str = lmap(str.strip, label_str)
+        return pred_str, label_str
+
+    def bertscore_score(preds, refs):
+        # TODO: this may become very slow. Either move to GPU to speed up or run on a new thread
+        return np.mean(bertscore.compute(predictions=preds, references=refs, model_type='roberta-large')['f1'])
+
+    def summarization_metrics(pred: EvalPrediction, path: str = None) -> Dict:
+        pred_str, label_str = decode_pred(pred)
+        scores: Dict = calculate_rouge(pred_str, label_str)
+        summ_len = np.round(np.mean(lmap(non_pad_len, pred.predictions)), 1)
+        scores.update({"gen_len": summ_len})
+        scores.update({"bertscore": bertscore_score(pred_str, label_str)})
+
+        # TODO
+        # 1) Save eval summaries to file # write_txt_file
+        # 2) Compute bert-score scores and add to metrics dict
+        if path is not None:
+            write_eval_output(pred_str, label_str, scores, path)
+
+        return scores
+
+    return summarization_metrics
+
+def write_eval_output(preds: list, refs: list, scores: dict, path: str):
+    # Create dir structure
+    eval_path = os.path.join(path, 'eval_outputs')
+    preds_path = os.path.join(path, 'eval_outputs', 'predictions')
+    scores_path = os.path.join(path, 'eval_outputs', 'scores')
+    for path_ in [eval_path, preds_path, scores_path]:
+        if not os.path.exists(path_):
+            os.mkdir(path_)
+
+    # Save refs
+    refs_path = os.path.join(preds_path, 'refs.txt')
+    if not os.path.exists(refs_path):
+        write_txt_file(refs, refs_path)
+
+    # Save latest eval summaries
+    preds_paths = glob(preds_path+'/preds*')
+    next_num = 1 + max(lmap(
+        lambda x: int(x.replace(preds_path+'/preds_','').replace('.txt','')),
+        preds_paths  
+    ) + [0])
+    current_pred_path = os.path.join(preds_path, f'preds_{next_num:03}.txt')
+    write_txt_file(preds, current_pred_path)
+
+    # Save scores
+    scores_path = current_pred_path.replace('predictions/preds_', 'scores/').replace('.txt', '.json')
+    with open(scores_path, 'w') as f:
+        json.dump(scores, f, indent=4)
 
 def trim_batch(
     input_ids,

@@ -37,7 +37,7 @@ from src.seq2seq.utils import (
     Seq2SeqDataCollator,
     Seq2SeqDataset,
     assert_all_frozen,
-    build_compute_metrics_fn,
+    build_compute_metrics_fn, build_compute_metrics_fn_go,
     check_output_dir,
     freeze_embeds,
     freeze_params,
@@ -128,6 +128,9 @@ def main():
             assert hasattr(config, p), f"({config.__class__.__name__}) doesn't have a `{p}` attribute"
             setattr(config, p, getattr(training_args, p))
 
+    if 'sshleifer' in model_args.model_name_or_path:
+        model_args.tokenizer_name = 'facebook/bart-large-cnn'
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
@@ -202,7 +205,7 @@ def main():
 
     # Initialize our Trainer
     compute_metrics_fn = (
-        build_compute_metrics_fn(data_args.task, tokenizer) if training_args.predict_with_generate else None
+        build_compute_metrics_fn_go(data_args.task, tokenizer) if training_args.predict_with_generate else None
     )
     trainer = CustomSeq2SeqTrainer(
         model=model,
