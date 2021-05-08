@@ -132,6 +132,7 @@ dmypy.json
 data/*
 !data/snli_small
 !data/cnn_dm_small
+!data/processing
 tmp_trainer
 wandb
 .vscode
