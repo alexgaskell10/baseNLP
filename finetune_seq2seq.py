@@ -18,7 +18,8 @@ import os
 import sys
 import yaml
 
-os.environ["WANDB_DISABLED"] = "true"
+# os.environ["WANDB_DISABLED"] = "true"
+os.environ["WANDB_WATCH"] = "false"
 
 import transformers
 from transformers import (
@@ -48,13 +49,12 @@ from src.seq2seq.utils import (
     handle_metrics,
 )
 from src.seq2seq.args import ModelArguments, DataTrainingArguments
-from src.seq2seq.custom_trainer import CustomSeq2SeqTrainer
 from src.seq2seq.callbacks import CustomFlowCallback
 
 
 logger = logging.getLogger(__name__)
 
-def load_args():
+def load_args(args_file):
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments))
 
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
@@ -66,7 +66,7 @@ def load_args():
         with open(f'config/seq2seq/seq2seq_base.yaml', 'r') as f:
             all_args = yaml.load(f, Loader=yaml.FullLoader)
         # Also load user-specified args and override base args
-        with open(f'config/seq2seq/train.yaml', 'r') as f:
+        with open(f'config/seq2seq/train.yaml' if args_file == None else args_file, 'r') as f:
             user_args = yaml.load(f, Loader=yaml.FullLoader)
         all_args.update(user_args)
         wandb = all_args.pop('wandb')
@@ -78,13 +78,16 @@ def load_args():
         training_args.overwrite_output_dir = True
         wandb = False
 
+    if wandb:
+        os.environ["WANDB_PROJECT"] = all_args.pop('wandb_project')
+
     training_args.learning_rate = float(training_args.learning_rate)
     os.environ["WANDB_DISABLED"] = "" if wandb else "true"
     
     return model_args, data_args, training_args
 
-def main():
-    model_args, data_args, training_args = load_args()
+def main(args_file=None):
+    model_args, data_args, training_args = load_args(args_file)
     check_output_dir(training_args)
 
     # Setup logging
@@ -204,6 +207,7 @@ def main():
     )
 
     # Initialize our Trainer
+    from src.seq2seq.custom_trainer import CustomSeq2SeqTrainer
     compute_metrics_fn = (
         build_compute_metrics_fn_go(data_args.task, tokenizer) if training_args.predict_with_generate else None
     )

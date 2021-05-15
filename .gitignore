@@ -139,3 +139,4 @@ wandb
 runs/*
 !*/README.md
 .lock
+mlruns

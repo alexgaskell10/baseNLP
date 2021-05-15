@@ -27,6 +27,7 @@ from typing import Callable, Dict, Iterable, List, Tuple, Union
 import git
 import numpy as np
 import torch
+from torch._C import AggregationType
 import torch.distributed as dist
 from rouge_score import rouge_scorer, scoring
 from sacrebleu import corpus_bleu
@@ -120,9 +121,13 @@ def build_compute_metrics_fn_go(task_name: str, tokenizer: PreTrainedTokenizer) 
         label_str = lmap(str.strip, label_str)
         return pred_str, label_str
 
-    def bertscore_score(preds, refs):
+    def bertscore_score(preds, refs, aggregate=True):
         # TODO: this may become very slow. Either move to GPU to speed up or run on a new thread
-        return np.mean(bertscore.compute(predictions=preds, references=refs, model_type='roberta-large')['f1'])
+        scores = bertscore.compute(predictions=preds, references=refs, model_type='roberta-large')['f1']
+        if aggregate:
+            return np.mean(scores)
+        else:
+            return scores
 
     def summarization_metrics(pred: EvalPrediction, path: str = None) -> Dict:
         pred_str, label_str = decode_pred(pred)
@@ -131,17 +136,22 @@ def build_compute_metrics_fn_go(task_name: str, tokenizer: PreTrainedTokenizer) 
         scores.update({"gen_len": summ_len})
         scores.update({"bertscore": bertscore_score(pred_str, label_str)})
 
-        # TODO
-        # 1) Save eval summaries to file # write_txt_file
-        # 2) Compute bert-score scores and add to metrics dict
+        unaggregated_scores_: Dict = calculate_rouge(pred_str, label_str, bootstrap_aggregation=False)
+        unaggregated_scores = {}
+        for k,v in unaggregated_scores_.items():
+            unaggregated_scores[k] = [score.fmeasure for score in v]
+        unaggregated_scores.update({"bertscore": bertscore_score(pred_str, label_str, aggregate=False)})
+
         if path is not None:
-            write_eval_output(pred_str, label_str, scores, path)
+            write_eval_output(pred_str, label_str, scores, path, unaggregated_scores)
 
         return scores
 
     return summarization_metrics
 
-def write_eval_output(preds: list, refs: list, scores: dict, path: str):
+def write_eval_output(
+    preds: list, refs: list, scores: dict, path: str, unaggregated_scores: dict = None
+):
     # Create dir structure
     eval_path = os.path.join(path, 'eval_outputs')
     preds_path = os.path.join(path, 'eval_outputs', 'predictions')
@@ -168,6 +178,14 @@ def write_eval_output(preds: list, refs: list, scores: dict, path: str):
     scores_path = current_pred_path.replace('predictions/preds_', 'scores/').replace('.txt', '.json')
     with open(scores_path, 'w') as f:
         json.dump(scores, f, indent=4)
+
+    # Unaggregated scores
+    if unaggregated_scores is not None:
+        unaggregated_scores_dir = os.path.join(path, 'eval_outputs', 'unaggregated_scores')
+        os.makedirs(unaggregated_scores_dir, exist_ok=True)
+        unaggregated_scores_path = current_pred_path.replace('predictions/preds_', 'unaggregated_scores/').replace('.txt', '.json')
+        with open(unaggregated_scores_path, 'w') as f:
+            json.dump(unaggregated_scores, f, indent=4)
 
 def trim_batch(
     input_ids,
