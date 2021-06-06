@@ -13,10 +13,12 @@ from src.classification.utils import (
 def main():
     sys.argv.append('self_training')
     args = load_args()
-    args.do_train = False   # TODO
-    args.do_eval = False   # TODO
-    args.do_predict = False   # TODO
+    # args.do_train = False   # TODO
+    # args.do_eval = False   # TODO
+    # args.do_predict = False   # TODO
     teacher, tokenizer, datasets = classification_loop(args)
+
+    print('\n'*3, 'Teacher training finished - beginning unlabelled prediction', '\n'*3)
 
     ### Predict lables for the unseen samples
     # Load unlabelled data
@@ -41,6 +43,9 @@ def main():
     )        
     outputs = predictor.predict(test_dataset=unlabelled)
     preds = np.argmax(outputs.predictions, axis=1)
+    with open(args.run_name + '/teacher_preds.txt', 'w') as f:
+        for p in preds:
+            f.write(str(p)+'\n')
     
     ### Train with combined dataset
     # Update unlablled data with predicted labels
@@ -50,7 +55,9 @@ def main():
     # Combine training datasets
     datasets['train'].data += unlabelled.data
     shuffle(datasets['train'].data)
-    
+
+    print('\n'*3, 'Prediction phase finished - beginning training on both', '\n'*3)
+   
     # Train on both
     args.do_train = True   # TODO
     args.do_eval = True   # TODO
