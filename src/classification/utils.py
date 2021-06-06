@@ -86,7 +86,7 @@ def convert_examples_to_features(
         # if ex_index % 10000 == 0:
         #     logger.info("Writing example %d of %d" % (ex_index, len(examples)))
 
-        tokens_a = tokenizer.tokenize(example.text_a)
+        tokens_a = tokenizer.tokenize(example.text_a, truncation=True)
 
         tokens_b = None
         if example.text_b:

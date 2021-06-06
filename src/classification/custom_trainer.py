@@ -1,7 +1,7 @@
 import sys
 import os
 
-from transformers import Trainer
+from transformers.trainer import Trainer
 from src.classification.utils import compute_metrics
 import wandb
 

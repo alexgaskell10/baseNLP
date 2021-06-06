@@ -12,7 +12,7 @@ from transformers import (
 )
 
 from src.classification.callbacks import CustomFlowCallback
-from src.classification.data import SNLIDataset
+from src.classification.data import SNLIDataset, AutoQADataset
 from src.classification.utils import (
     collate_fn, compute_metrics, dump_test_results, dir_empty_or_nonexistent
 )
@@ -24,7 +24,7 @@ def load_args():
         - Huggingface transformers training args (defaults for using their model)
         - Manual args from .yaml file
     """
-    assert sys.argv[1] in ['train', 'test']
+    assert sys.argv[1] in ['train', 'test', 'self_training']
     # Load args from file
     with open(f'config/classification/{sys.argv[1]}.yaml', 'r') as f:
         manual_args = argparse.Namespace(**yaml.load(f, Loader=yaml.FullLoader))
@@ -59,24 +59,35 @@ def load_args():
 
     return args
 
-def main():
-    args = load_args()
 
+def classification_loop(args, model=None, tokenizer=None, datasets: dict=None):
     callbacks = [CustomFlowCallback]
-    dataset = SNLIDataset
-
     if args.wandb and 'tmp' not in args.output_dir:
         callbacks.append(WandbCallback)
         import wandb
         wandb.init(project=args.task, config=vars(args))
         os.environ["WANDB_DISABLED"] = ""
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_dir)
-    model = AutoModelForSequenceClassification.from_pretrained(args.model_name_or_dir, num_labels=3)
+    if tokenizer == None:
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_dir, model_max_length=args.max_seq_length)
+    if model == None:
+        model = AutoModelForSequenceClassification.from_pretrained(args.model_name_or_dir, num_labels=args.num_labels)
 
     # Init dataset
-    train = dataset(args, 'train', tokenizer)
-    dev = dataset(args, 'dev', tokenizer)  
+    if datasets == None:
+        if 'autoQA' in args.task:
+            dataset = AutoQADataset
+        elif 'snli' in args.task:
+            dataset = SNLIDataset
+        else:
+            raise NotImplementedError()
+        train = dataset(args, 'train', tokenizer)
+        dev = dataset(args, 'dev', tokenizer)  
+        test = dataset(args, 'test', tokenizer)
+    else:
+        train = datasets['train']
+        dev = datasets['dev']
+        test = datasets['test']
 
     # Run training
     if args.do_train:
@@ -97,8 +108,6 @@ def main():
         os.environ["WANDB_DISABLED"] = "true"
         callbacks = [c for c in callbacks if c.__module__ != 'transformers.integrations']
 
-        test = dataset(args, 'test', tokenizer)
-
         predictor = CustomTrainer(
             model,
             args=args,
@@ -108,9 +117,17 @@ def main():
             callbacks=callbacks,
             compute_metrics=compute_metrics,
         )        
-        outputs = predictor.evaluate()
+        outputs = predictor.evaluate()      # Change to predict() if want predictions returned
         dump_test_results(outputs, args.output_dir)
+
+    datasets = {'train': train, 'dev': dev, 'test': test}
+
+    return model, tokenizer, datasets
+
+def main():
+    args = load_args()
+    classification_loop(args)
 
 
 if __name__ == '__main__':
-    main()
+    launch()
