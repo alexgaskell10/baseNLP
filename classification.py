@@ -24,7 +24,7 @@ def load_args():
         - Huggingface transformers training args (defaults for using their model)
         - Manual args from .yaml file
     """
-    assert sys.argv[1] in ['train', 'test', 'self_training']
+    assert sys.argv[1] in ['train', 'test', 'self_training', 'call_api']
     # Load args from file
     with open(f'config/classification/{sys.argv[1]}.yaml', 'r') as f:
         manual_args = argparse.Namespace(**yaml.load(f, Loader=yaml.FullLoader))
@@ -124,10 +124,11 @@ def classification_loop(args, model=None, tokenizer=None, datasets: dict=None):
 
     return model, tokenizer, datasets
 
+
 def main():
     args = load_args()
     classification_loop(args)
 
 
 if __name__ == '__main__':
-    launch()
+    main()

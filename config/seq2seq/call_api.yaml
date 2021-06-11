@@ -1,0 +1,7 @@
+models_dir: runs/autoCW_demo
+task: summarization
+n_obs: 8
+fp16: false
+bs: 4
+device: cuda
+prefix: ""

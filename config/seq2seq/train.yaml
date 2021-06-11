@@ -1,6 +1,6 @@
 wandb: false
 wandb_project: test_go
-model_name_or_path: facebook/bart-base # {facebook/bart-large-cnn, sshleifer/bart-tiny-random, facebook/bart-base}
+model_name_or_path: facebook/bart-base # {facebook/bart-large-cnn, sshleifer/distilbart-cnn-12-6, facebook/bart-base}
 data_dir: data/go/small
 output_dir: runs/test_GO
 learning_rate: 3e-5

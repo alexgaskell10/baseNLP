@@ -12,7 +12,7 @@ from src.classification.utils import (
 )
 
 
-class RobustnessDataset(Dataset):
+class NLPDataset(Dataset):
     def __init__(self, args, dset, tokenizer):
         self.args = args
         self.data_dir = os.path.join(args.data_dir, args.task)
@@ -58,7 +58,7 @@ class RobustnessDataset(Dataset):
         return self.data[idx]
 
 
-class SNLIDataset(RobustnessDataset):
+class SNLIDataset(NLPDataset):
     def __init__(self, *arguments):
         super().__init__(*arguments)
 
@@ -79,14 +79,14 @@ class SNLIDataset(RobustnessDataset):
         return examples    
 
 
-class AutoQADataset(RobustnessDataset):
+class AutoQADataset(NLPDataset):
     def __init__(self, *arguments):
         super().__init__(*arguments)
 
     def get_labels(self):
         return ["0","1"]
 
-    def _create_examples(self, lines, set_type):
+    def _create_examples(self, lines):
         """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
@@ -97,3 +97,27 @@ class AutoQADataset(RobustnessDataset):
                 InputExample(guid=guid, text_a=text_a, label=label)
             )
         return examples    
+
+
+class AutoQAJsonDataset(AutoQADataset):
+    def __init__(self, args, dset: list, *arguments):
+        self.data = dset
+        super().__init__(args, None, *arguments)
+
+    def get_examples(self):
+        return self._create_examples(self._json_to_lines(self.data))
+
+    def _json_to_lines(self, data):
+        ''' Data ingested as:
+            [{"body": body, [OPTIONAL: "label": label, "guid": guid, ...]}, ...]
+        '''
+        lines = []
+        for n, sample in enumerate(data):
+            body = sample["body"]
+            label = sample["label"] if "label" in sample else None
+            guid = sample["guid"] if "guid" in sample else n
+            lines.append([guid, label, body])
+
+        return lines
+
+

@@ -14,12 +14,14 @@
 # limitations under the License.
 
 import sys
+import os
 import yaml
 import argparse
 import datetime
 import json
 import time
 import warnings
+import glob
 from logging import getLogger
 from pathlib import Path
 from typing import Dict, List
@@ -51,7 +53,6 @@ def generate_summaries_or_translations(
     **generate_kwargs,
 ) -> Dict:
     """Save model.generate results to <out_file>, and return how long it took."""
-    fout = Path(out_file).open("w", encoding="utf-8")
     model_name = str(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
     if fp16:
@@ -74,46 +75,14 @@ def generate_summaries_or_translations(
             **generate_kwargs,
         )
         dec = tokenizer.batch_decode(summaries, skip_special_tokens=True, clean_up_tokenization_spaces=False)
-        for hypothesis in dec:
-            fout.write(hypothesis + "\n")
-            fout.flush()
-    fout.close()
+
     runtime = int(time.time() - start_time)  # seconds
     n_obs = len(examples)
-    return dict(n_obs=n_obs, runtime=runtime, seconds_per_sample=round(runtime / n_obs, 4))
+    return dict(n_obs=n_obs, runtime=runtime, seconds_per_sample=round(runtime / n_obs, 4)), dec
 
 
 def datetime_now():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def get_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=str, help="like facebook/bart-large-cnn,t5-base, etc.")
-    parser.add_argument("--input_path", type=str, help="like cnn_dm/test.source")
-    parser.add_argument("--save_path", type=str, help="where to save summaries")
-    parser.add_argument("--reference_path", type=str, required=False, help="like cnn_dm/test.target")
-    parser.add_argument("--score_path", type=str, required=False, default="metrics.json", help="where to save metrics")
-    parser.add_argument("--device", type=str, required=False, default=DEFAULT_DEVICE, help="cuda, cuda:1, cpu etc.")
-    parser.add_argument(
-        "--prefix", type=str, required=False, default=None, help="will be added to the begininng of src examples"
-    )
-    parser.add_argument("--task", type=str, default="summarization", help="used for task_specific_params + metrics")
-    parser.add_argument("--bs", type=int, default=8, required=False, help="batch size")
-    parser.add_argument(
-        "--n_obs", type=int, default=-1, required=False, help="How many observations. Defaults to all."
-    )
-    parser.add_argument("--fp16", action="store_true")
-    parser.add_argument("--dump-args", action="store_true", help="print the custom hparams with the results")
-    parser.add_argument(
-        "--info",
-        nargs="?",
-        type=str,
-        const=datetime_now(),
-        help="use in conjunction w/ --dump-args to print with the results whatever other info you'd like, e.g. lang=en-ru. If no value is passed, the current datetime string will be used.",
-    )
-    # Unspecified args like --num_beams=2 --decoder_start_token_id=4 are passed to model.generate
-    return parser
 
 
 def load_args():
@@ -122,12 +91,12 @@ def load_args():
         - Huggingface transformers training args (defaults for using their model)
         - Manual args from .yaml file
     """
-    with open(f'config/seq2seq/test.yaml', 'r') as f:
+    with open(f'config/seq2seq/call_api.yaml', 'r') as f:
         args = argparse.Namespace(**yaml.load(f, Loader=yaml.FullLoader))
     return args
 
 
-def run_generate(verbose=True):
+def run_generate(args, parsed_args, examples, verbose=True):
     """
     Takes input text, generates output, and then using reference calculates the BLEU scores.
 
@@ -141,28 +110,10 @@ def run_generate(verbose=True):
         - ``scores``: a dict of scores data ``{'bleu': 39.6501, 'n_obs': 2000, 'runtime': 186, 'seconds_per_sample': 0.093}``
         - ``params``: a dict of custom params, e.g. ``{'num_beams': 5, 'length_penalty': 0.8}``
     """
-    if len(sys.argv) <= 3:
-        args = load_args()
-        rest = []
-    else:
-        parser = get_parser()
-        args, rest = parser.parse_known_args()
-    
-    parsed_args = parse_numeric_n_bool_cl_kwargs(rest)
-    if parsed_args and verbose:
-        print(f"parsed the following generate kwargs: {parsed_args}")
-    
-    examples = [" " + x.rstrip() if "t5" in args.model_name else x.rstrip() for x in open(args.input_path).readlines()]
-    
     if args.n_obs > 0:
         examples = examples[: args.n_obs]
-    
-    Path(args.save_path).parent.mkdir(exist_ok=True)
-    
-    if args.reference_path is None and Path(args.score_path).exists():
-        warnings.warn(f"score_path {args.score_path} will be overwritten unless you type ctrl-c.")
-    
-    runtime_metrics = generate_summaries_or_translations(
+        
+    _, generations = generate_summaries_or_translations(
         examples,
         args.save_path,
         args.model_name,
@@ -174,29 +125,44 @@ def run_generate(verbose=True):
         **parsed_args,
     )
 
-    if args.reference_path is None:
-        return {}
+    return generations
 
-    # Compute scores
-    score_fn = calculate_rouge
-    output_lns = [x.rstrip() for x in open(args.save_path).readlines()]
-    reference_lns = [x.rstrip() for x in open(args.reference_path).readlines()][: len(output_lns)]
-    scores: dict = score_fn(output_lns, reference_lns)
-    scores.update(runtime_metrics)
 
-    if hasattr(args, "dump_args") and args.dump_args:
-        scores.update(parsed_args)
-    if hasattr(args, "info") and args.info:
-        scores["info"] = args.info
+def main(json_data):
+    args = load_args()
+    parsed_args = parse_numeric_n_bool_cl_kwargs([])
 
-    if verbose:
-        print(scores)
+    # Set empty args
+    args.input_path = None
+    args.reference_path = None
+    args.save_path = None
+    args.score_path = None
 
-    if args.score_path is not None:
-        json.dump(scores, open(args.score_path, "w"))
+    section_outputs = {}
+    for sec_num, examples in json_data.items():
+        sec_args = argparse.Namespace(**vars(args))
+        section = f'section_{sec_num}'
+        sec_args.model_name = os.path.join(sec_args.models_dir, section)
 
-    return scores
+        generations = run_generate(sec_args, parsed_args, examples, verbose=True)
+        section_outputs[section] = generations
+
+    return section_outputs
+
+
+def file_to_json():
+    # Load data and format as json
+    dirs = glob.glob('data/go/section_*')
+    json_data = {}
+    for folder in dirs:
+        sec_num = int(folder[-1])
+        assert sec_num in range(1,8)
+        path = os.path.join(folder, 'test.source')
+        examples = [x.strip() for x in open(path).readlines()]
+        json_data[sec_num] = examples
+    return json_data
 
 
 if __name__ == "__main__":
-    run_generate(verbose=True)
+    json_data = file_to_json()
+    main(json_data)
