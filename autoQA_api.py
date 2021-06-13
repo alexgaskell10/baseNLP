@@ -58,6 +58,9 @@ def file_to_json(input_file, quotechar=None):
     return json_data
 
 
-if __name__ == '__main__':
+def test_call():
     json_data = file_to_json('data/go/autoQA/small/test.tsv')        # TODO: this simulates json data being passed in.
     print(main(json_data))
+
+if __name__ == '__main__':
+    test_call()

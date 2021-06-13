@@ -1,4 +1,4 @@
-data_dir: data/go/section_5
+data_dir: data/go/section_4
 do_eval: true
 do_predict: true
 do_train: true
@@ -10,10 +10,10 @@ learning_rate: 3e-5
 logging_first_step: true
 logging_steps: 10
 max_source_length: 512
-model_name_or_path: sshleifer/bart-tiny-random
+model_name_or_path: facebook/bart-large-cnn
 n_val: 1000
 num_train_epochs: 1
-output_dir: runs/section_5/test_GO_01
+output_dir: runs/autoCW/section_4/test_GO_01
 per_device_eval_batch_size: 1
 per_device_train_batch_size: 1
 predict_with_generate: true

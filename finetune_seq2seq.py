@@ -71,6 +71,16 @@ def load_args(args_file):
         all_args.update(user_args)
         wandb = all_args.pop('wandb')
         model_args, data_args, training_args = parser.parse_dict(all_args)
+    elif len(sys.argv) == 2 and sys.argv[1].endswith(".yaml"):
+        # If we pass no args to the script then load args from .yaml
+        with open(f'config/seq2seq/seq2seq_base.yaml', 'r') as f:
+            all_args = yaml.load(f, Loader=yaml.FullLoader)
+        # Also load user-specified args and override base args
+        with open(os.path.abspath(sys.argv[1]), 'r') as f:
+            user_args = yaml.load(f, Loader=yaml.FullLoader)
+        all_args.update(user_args)
+        wandb = all_args.pop('wandb')
+        model_args, data_args, training_args = parser.parse_dict(all_args)
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 

@@ -12,11 +12,12 @@ logging_steps: 10
 max_source_length: 512
 model_name_or_path: facebook/bart-large-cnn
 n_val: 1000
-output_dir: runs/section_5/test_GO_01
+num_train_epochs: 1
+output_dir: runs/autoCW/section_5/test_GO_01
 per_device_eval_batch_size: 1
 per_device_train_batch_size: 1
 predict_with_generate: true
 test_max_target_length: 142
 val_max_target_length: 142
-wandb: true
+wandb: false
 wandb_project: test_go
