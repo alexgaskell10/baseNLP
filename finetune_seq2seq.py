@@ -54,6 +54,7 @@ from src.seq2seq.callbacks import CustomFlowCallback
 
 logger = logging.getLogger(__name__)
 
+
 def load_args(args_file):
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments))
 
@@ -96,6 +97,7 @@ def load_args(args_file):
     
     return model_args, data_args, training_args
 
+
 def main(args_file=None):
     model_args, data_args, training_args = load_args(args_file)
     check_output_dir(training_args)
@@ -125,11 +127,6 @@ def main(args_file=None):
     set_seed(training_args.seed)
 
     # Load pretrained model and tokenizer
-    #
-    # Distributed training:
-    # The .from_pretrained methods guarantee that only one local process can concurrently
-    # download model & vocab.
-
     config = AutoConfig.from_pretrained(
         model_args.config_name if model_args.config_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,

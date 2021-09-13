@@ -1,8 +1,8 @@
 wandb: false
 wandb_project: test_go
 model_name_or_path: facebook/bart-base # {facebook/bart-large-cnn, sshleifer/distilbart-cnn-12-6, facebook/bart-base}
-data_dir: data/go/small
-output_dir: runs/test_GO
+data_dir: data/cnn_dm_small
+output_dir: runs/cnn_tmp
 learning_rate: 3e-5
 fp16: false
 do_train: true
